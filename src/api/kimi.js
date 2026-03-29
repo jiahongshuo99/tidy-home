@@ -1,5 +1,7 @@
-import { stage1Prompt } from '../prompts/stage1.js'
-import { stage2Prompt } from '../prompts/stage2.js'
+import { setupStage1Prompt } from '../prompts/setupStage1.js'
+import { setupStage2Prompt } from '../prompts/setupStage2.js'
+import { inspectStage1Prompt } from '../prompts/inspectStage1.js'
+import { inspectStage2Prompt } from '../prompts/inspectStage2.js'
 
 const BASE_URL = 'https://api.moonshot.cn/v1'
 const MODEL = 'kimi-k2.5'
@@ -99,33 +101,52 @@ async function callKimi(apiKey, messages, maxTokens = 1500, thinking = true) {
   throw new Error('模型未返回有效内容，请重试')
 }
 
-export async function analyzePhoto(apiKey, imageDataUrl, roomName, thinking = true) {
+// ── Setup pipeline ─────────────────────────────────────────────────────────
+
+export async function setupAnalyzePhoto(apiKey, imageDataUrl, roomName, thinking = true) {
   const content = await callKimi(apiKey, [
     {
       role: 'user',
       content: [
-        {
-          type: 'image_url',
-          image_url: { url: imageDataUrl },
-        },
-        {
-          type: 'text',
-          text: stage1Prompt(roomName),
-        },
+        { type: 'image_url', image_url: { url: imageDataUrl } },
+        { type: 'text', text: setupStage1Prompt(roomName) },
       ],
     },
   ], 4000, thinking)
-
   return parseJSON(content)
 }
 
-export async function synthesizeResults(apiKey, roomResults, thinking = true) {
+export async function setupSynthesize(apiKey, groupedRooms, thinking = true) {
   const content = await callKimi(apiKey, [
     {
       role: 'user',
-      content: stage2Prompt(roomResults),
+      content: setupStage2Prompt(groupedRooms),
     },
   ], 8000, thinking)
+  return parseJSON(content)
+}
 
+// ── Inspect pipeline ───────────────────────────────────────────────────────
+
+export async function inspectAnalyzePhoto(apiKey, imageDataUrl, roomName, knownZones, thinking = true) {
+  const content = await callKimi(apiKey, [
+    {
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: imageDataUrl } },
+        { type: 'text', text: inspectStage1Prompt(roomName, knownZones) },
+      ],
+    },
+  ], 4000, thinking)
+  return parseJSON(content)
+}
+
+export async function inspectSynthesize(apiKey, profile, inspectSnapshots, thinking = true) {
+  const content = await callKimi(apiKey, [
+    {
+      role: 'user',
+      content: inspectStage2Prompt(profile, inspectSnapshots),
+    },
+  ], 8000, thinking)
   return parseJSON(content)
 }

@@ -34,6 +34,7 @@ function ThinkingToggle({ label, enabled, onChange }) {
 }
 
 export default function UploadPage({
+  mode,
   photos,
   setPhotos,
   onStartAnalysis,
@@ -119,6 +120,11 @@ export default function UploadPage({
         <div className="max-w-[1024px] mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-[#1C1917]">Tidy Home</span>
+            {mode === 'inspect' ? (
+              <span className="text-xs text-[#4D7C5F] font-medium bg-[#F0F7F3] px-2 py-0.5 rounded-full">巡检</span>
+            ) : (
+              <span className="text-xs text-brand-500 font-medium bg-brand-50 px-2 py-0.5 rounded-full">建档</span>
+            )}
             <div className="flex items-center gap-1 text-xs text-[#A8A29E]">
               <span className={`${!analyzing ? 'text-brand-500 font-medium' : 'text-[#A8A29E]'}`}>
                 上传照片
@@ -145,10 +151,13 @@ export default function UploadPage({
         {/* Hero */}
         <div className="mb-8">
           <h1 className="text-[26px] font-bold text-[#1C1917] tracking-tight leading-snug">
-            拍下你的每个房间
+            {mode === 'inspect' ? '拍下当前各房间的状态' : '拍下你的每个房间'}
           </h1>
           <p className="mt-1.5 text-[15px] text-[#78716C]">
-            上传后为每张照片填写房间名称。同名照片将合并为一个房间进行分析。
+            {mode === 'inspect'
+              ? '上传照片，AI 将对比档案发现放错位置的物品。同名照片合并为一个房间。'
+              : '上传后为每张照片填写房间名称。同名照片将合并为一个房间进行分析。'
+            }
           </p>
         </div>
 
