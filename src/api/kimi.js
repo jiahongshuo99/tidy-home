@@ -4,13 +4,63 @@ import { stage2Prompt } from '../prompts/stage2.js'
 const BASE_URL = 'https://api.moonshot.cn/v1'
 const MODEL = 'kimi-k2.5'
 
+// Replace unescaped " used as emphasis marks inside JSON string values.
+// Walks the JSON char-by-char: when inside a string, a " that is NOT followed
+// by a structural JSON character (,  }  ]  :  newline) is treated as an
+// embedded emphasis quote and replaced with 「 (open) or 」 (close).
+function repairEmbeddedQuotes(str) {
+  let result = ''
+  let inString = false
+  let inEmbedded = false
+  let i = 0
+  while (i < str.length) {
+    const ch = str[i]
+    if (ch === '\\' && inString) {
+      result += ch + (str[i + 1] ?? '')
+      i += 2
+      continue
+    }
+    if (ch === '"') {
+      if (!inString) {
+        inString = true
+        result += ch
+      } else if (inEmbedded) {
+        inEmbedded = false
+        result += '」'
+      } else {
+        // Peek at next non-space char to decide: structural close vs embedded open
+        let j = i + 1
+        while (j < str.length && (str[j] === ' ' || str[j] === '\t')) j++
+        const peek = str[j]
+        const isClose = peek === undefined || [',', '}', ']', '\n', '\r', ':'].includes(peek)
+        if (isClose) {
+          inString = false
+          result += ch
+        } else {
+          inEmbedded = true
+          result += '「'
+        }
+      }
+    } else {
+      result += ch
+    }
+    i++
+  }
+  return result
+}
+
 function parseJSON(content) {
-  // Strip markdown code fences if the model wraps output in them
-  const cleaned = content
+  // Strip markdown code fences
+  const stripped = content
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```\s*$/i, '')
     .trim()
-  return JSON.parse(cleaned)
+  try {
+    return JSON.parse(stripped)
+  } catch {
+    // Repair embedded unescaped quotes and retry
+    return JSON.parse(repairEmbeddedQuotes(stripped))
+  }
 }
 
 async function callKimi(apiKey, messages, maxTokens = 1500, thinking = true) {
