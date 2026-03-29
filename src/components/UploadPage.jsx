@@ -13,6 +13,25 @@ function fileToDataUrl(file) {
   })
 }
 
+function ThinkingToggle({ label, enabled, onChange }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer select-none">
+      <span className="text-xs text-[#78716C]">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        onClick={() => onChange(!enabled)}
+        className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${enabled ? 'bg-brand-500' : 'bg-[#D6D3D1]'}`}
+      >
+        <span
+          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${enabled ? 'translate-x-4' : 'translate-x-0'}`}
+        />
+      </button>
+    </label>
+  )
+}
+
 export default function UploadPage({
   photos,
   setPhotos,
@@ -21,6 +40,10 @@ export default function UploadPage({
   stage2Status,
   onChangeApiKey,
   getNextId,
+  stage1Thinking,
+  setStage1Thinking,
+  stage2Thinking,
+  setStage2Thinking,
 }) {
   const inputRef = useRef(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -193,18 +216,33 @@ export default function UploadPage({
 
         {/* Bottom action */}
         {!analyzing && (
-          <div className="flex items-center justify-between pt-2">
-            <p className="text-sm text-[#A8A29E]">
-              {photos.length > 0 ? `已上传 ${photos.length} 张照片` : '还没有上传照片'}
-            </p>
-            <button
-              onClick={onStartAnalysis}
-              disabled={photos.length === 0}
-              className="h-10 px-5 bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-[10px] flex items-center gap-2 transition-all hover:enabled:-translate-y-px active:enabled:translate-y-0"
-            >
-              <Sparkles size={15} />
-              开始分析（{photos.length} 张照片）
-            </button>
+          <div className="pt-2 space-y-3">
+            <div className="flex items-center gap-5 px-1">
+              <span className="text-xs text-[#A8A29E] font-medium">模型思考</span>
+              <ThinkingToggle
+                label="图片分析（Stage 1）"
+                enabled={stage1Thinking}
+                onChange={setStage1Thinking}
+              />
+              <ThinkingToggle
+                label="综合分析（Stage 2）"
+                enabled={stage2Thinking}
+                onChange={setStage2Thinking}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-[#A8A29E]">
+                {photos.length > 0 ? `已上传 ${photos.length} 张照片` : '还没有上传照片'}
+              </p>
+              <button
+                onClick={onStartAnalysis}
+                disabled={photos.length === 0}
+                className="h-10 px-5 bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-[10px] flex items-center gap-2 transition-all hover:enabled:-translate-y-px active:enabled:translate-y-0"
+              >
+                <Sparkles size={15} />
+                开始分析（{photos.length} 张照片）
+              </button>
+            </div>
           </div>
         )}
       </main>

@@ -14,6 +14,8 @@ export default function App() {
   const [photos, setPhotos] = useState([])
   const [analysisResult, setAnalysisResult] = useState(null)
   const [stage2Status, setStage2Status] = useState('idle') // idle | loading | error
+  const [stage1Thinking, setStage1Thinking] = useState(true)
+  const [stage2Thinking, setStage2Thinking] = useState(false)
 
   const handleApiKeySubmit = (key) => {
     localStorage.setItem('tidyhome_apikey', key)
@@ -30,7 +32,7 @@ export default function App() {
 
     // Stage 1: analyze each photo in parallel
     const tasks = photos.map(photo =>
-      analyzePhoto(apiKey, photo.dataUrl, photo.roomType)
+      analyzePhoto(apiKey, photo.dataUrl, photo.roomType, stage1Thinking)
         .then(result => {
           updatePhoto(photo.id, { status: 'done', result })
           return { roomType: photo.roomType, ...result }
@@ -55,7 +57,7 @@ export default function App() {
     // Stage 2: synthesize
     setStage2Status('loading')
     try {
-      const synthesis = await synthesizeResults(apiKey, successResults)
+      const synthesis = await synthesizeResults(apiKey, successResults, stage2Thinking)
       setAnalysisResult(synthesis)
       setStep('results')
     } catch {
@@ -93,6 +95,10 @@ export default function App() {
       stage2Status={stage2Status}
       onChangeApiKey={() => setStep('setup')}
       getNextId={() => `photo_${++photoIdCounter}`}
+      stage1Thinking={stage1Thinking}
+      setStage1Thinking={setStage1Thinking}
+      stage2Thinking={stage2Thinking}
+      setStage2Thinking={setStage2Thinking}
     />
   )
 }

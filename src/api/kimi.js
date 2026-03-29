@@ -13,7 +13,7 @@ function parseJSON(content) {
   return JSON.parse(cleaned)
 }
 
-async function callKimi(apiKey, messages, maxTokens = 1500) {
+async function callKimi(apiKey, messages, maxTokens = 1500, thinking = true) {
   const response = await fetch(`${BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -24,6 +24,7 @@ async function callKimi(apiKey, messages, maxTokens = 1500) {
       model: MODEL,
       max_tokens: maxTokens,
       messages,
+      thinking: { type: thinking ? 'enabled' : 'disabled' },
     }),
   })
 
@@ -48,7 +49,7 @@ async function callKimi(apiKey, messages, maxTokens = 1500) {
   throw new Error('模型未返回有效内容，请重试')
 }
 
-export async function analyzePhoto(apiKey, imageDataUrl, roomType) {
+export async function analyzePhoto(apiKey, imageDataUrl, roomType, thinking = true) {
   const content = await callKimi(apiKey, [
     {
       role: 'user',
@@ -63,18 +64,18 @@ export async function analyzePhoto(apiKey, imageDataUrl, roomType) {
         },
       ],
     },
-  ], 4000)
+  ], 4000, thinking)
 
   return parseJSON(content)
 }
 
-export async function synthesizeResults(apiKey, roomResults) {
+export async function synthesizeResults(apiKey, roomResults, thinking = true) {
   const content = await callKimi(apiKey, [
     {
       role: 'user',
       content: stage2Prompt(roomResults),
     },
-  ], 4000)
+  ], 8000, thinking)
 
   return parseJSON(content)
 }
