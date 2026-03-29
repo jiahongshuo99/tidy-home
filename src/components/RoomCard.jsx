@@ -1,6 +1,4 @@
-import { X, Loader2, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react'
-
-const ROOM_TYPES = ['客厅', '卧室', '厨房', '书房', '餐厅', '卫生间', '其他']
+import { X, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
 
 const ZONE_TYPE_LABEL = {
   storage: '收纳',
@@ -15,8 +13,9 @@ const STATUS_BORDER = {
   error:   'border-l-4 border-l-red-500 border-[#DDD9D2]',
 }
 
-export default function RoomCard({ photo, onRemove, onRoomTypeChange, analyzing }) {
-  const { id, dataUrl, roomType, status = 'waiting', result, error } = photo
+export default function RoomCard({ photo, onRemove, onRoomNameChange, analyzing, existingRoomNames }) {
+  const { id, dataUrl, roomName, status = 'waiting', result, error } = photo
+  const datalistId = `rooms-${id}`
 
   return (
     <div className={`bg-white rounded-xl border ${STATUS_BORDER[status]} overflow-hidden transition-all duration-150 group`}>
@@ -24,7 +23,7 @@ export default function RoomCard({ photo, onRemove, onRoomTypeChange, analyzing 
       <div className="relative aspect-[4/3] overflow-hidden bg-[#F7F5F2]">
         <img
           src={dataUrl}
-          alt={roomType}
+          alt={roomName}
           className={`w-full h-full object-cover transition-all duration-300 ${status === 'loading' ? 'blur-sm scale-105' : ''}`}
         />
 
@@ -68,20 +67,26 @@ export default function RoomCard({ photo, onRemove, onRoomTypeChange, analyzing 
 
       {/* Bottom info */}
       <div className="px-3 py-2.5 space-y-2">
-        {/* Room type selector */}
+        {/* Room name input */}
         {!analyzing ? (
-          <select
-            value={roomType}
-            onChange={e => onRoomTypeChange(id, e.target.value)}
-            className="w-full text-xs font-medium text-[#1C1917] bg-transparent outline-none cursor-pointer"
-          >
-            {ROOM_TYPES.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
+          <>
+            <input
+              type="text"
+              list={datalistId}
+              value={roomName}
+              onChange={e => onRoomNameChange(id, e.target.value)}
+              placeholder="输入房间名称"
+              className="w-full text-xs font-medium text-[#1C1917] bg-transparent outline-none placeholder-[#A8A29E]"
+            />
+            <datalist id={datalistId}>
+              {existingRoomNames.map(name => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+          </>
         ) : (
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#1C1917]">{roomType}</span>
+            <span className="text-xs font-medium text-[#1C1917]">{roomName}</span>
             {status === 'loading' && (
               <span className="text-xs text-brand-500 font-medium">分析中…</span>
             )}

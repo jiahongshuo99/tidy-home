@@ -1,7 +1,8 @@
-export function stage2Prompt(roomResults) {
-  const summaryJson = JSON.stringify(roomResults, null, 2)
+export function stage2Prompt(groupedRooms) {
+  // groupedRooms: Array<{ roomName: string, analyses: Array<{ zones, room_summary }> }>
+  const summaryJson = JSON.stringify(groupedRooms, null, 2)
 
-  return `你是一位专业的家居收纳顾问。以下是用户家中各房间的现状分析数据：
+  return `你是一位专业的家居收纳顾问。以下是用户家中各房间的现状分析数据，同一房间可能包含多张照片的分析结果：
 
 ${summaryJson}
 
@@ -16,7 +17,7 @@ ${summaryJson}
 {
   "zone_guidelines": [
     {
-      "zone": "区域名（房间·区域，如：客厅·茶几）",
+      "zone": "区域名（房间·区域，如：主卧·衣柜）",
       "suitable_items": ["适合放置的物品类型1", "适合放置的物品类型2"]
     }
   ],

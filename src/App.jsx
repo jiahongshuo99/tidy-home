@@ -1,10 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import ApiKeySetup from './components/ApiKeySetup'
 import UploadPage from './components/UploadPage'
 import AnalysisResults from './components/AnalysisResults'
 import { analyzePhoto, synthesizeResults } from './api/kimi'
 
 let photoIdCounter = 0
+
+// Run tasks (array of () => Promise) with max concurrency
+async function runConcurrent(tasks, limit) {
+  const results = new Array(tasks.length).fill(null)
+  let next = 0
+  async function worker() {
+    while (next < tasks.length) {
+      const i = next++
+      results[i] = await tasks[i]()
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker))
+  return results
+}
 
 export default function App() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('tidyhome_apikey') || '')
@@ -16,6 +30,7 @@ export default function App() {
   const [stage2Status, setStage2Status] = useState('idle') // idle | loading | error
   const [stage1Thinking, setStage1Thinking] = useState(true)
   const [stage2Thinking, setStage2Thinking] = useState(false)
+  const [concurrency, setConcurrency] = useState(3)
 
   const handleApiKeySubmit = (key) => {
     localStorage.setItem('tidyhome_apikey', key)
@@ -29,13 +44,14 @@ export default function App() {
   const handleStartAnalysis = async () => {
     setStep('analyzing')
     setStage2Status('idle')
+    setPhotos(prev => prev.map(p => ({ ...p, status: 'loading' })))
 
-    // Stage 1: analyze each photo in parallel
-    const tasks = photos.map(photo =>
-      analyzePhoto(apiKey, photo.dataUrl, photo.roomType, stage1Thinking)
+    // Stage 1: analyze each photo with concurrency limit
+    const tasks = photos.map(photo => () =>
+      analyzePhoto(apiKey, photo.dataUrl, photo.roomName, stage1Thinking)
         .then(result => {
           updatePhoto(photo.id, { status: 'done', result })
-          return { roomType: photo.roomType, ...result }
+          return { photoId: photo.id, roomName: photo.roomName, ...result }
         })
         .catch(err => {
           updatePhoto(photo.id, { status: 'error', error: err.message })
@@ -43,10 +59,7 @@ export default function App() {
         })
     )
 
-    // Mark all as loading immediately
-    setPhotos(prev => prev.map(p => ({ ...p, status: 'loading' })))
-
-    const results = await Promise.all(tasks)
+    const results = await runConcurrent(tasks, concurrency)
     const successResults = results.filter(Boolean)
 
     if (successResults.length === 0) {
@@ -54,10 +67,21 @@ export default function App() {
       return
     }
 
+    // Group results by roomName for Stage 2
+    const roomMap = {}
+    successResults.forEach(r => {
+      if (!roomMap[r.roomName]) roomMap[r.roomName] = []
+      roomMap[r.roomName].push({ zones: r.zones, room_summary: r.room_summary })
+    })
+    const groupedRooms = Object.entries(roomMap).map(([roomName, analyses]) => ({
+      roomName,
+      analyses,
+    }))
+
     // Stage 2: synthesize
     setStage2Status('loading')
     try {
-      const synthesis = await synthesizeResults(apiKey, successResults, stage2Thinking)
+      const synthesis = await synthesizeResults(apiKey, groupedRooms, stage2Thinking)
       setAnalysisResult(synthesis)
       setStep('results')
     } catch {
@@ -99,6 +123,8 @@ export default function App() {
       setStage1Thinking={setStage1Thinking}
       stage2Thinking={stage2Thinking}
       setStage2Thinking={setStage2Thinking}
+      concurrency={concurrency}
+      setConcurrency={setConcurrency}
     />
   )
 }

@@ -2,7 +2,8 @@ import { useRef, useState, useCallback } from 'react'
 import { Upload, Settings, Sparkles } from 'lucide-react'
 import RoomCard from './RoomCard'
 
-const DEFAULT_ROOM_TYPE = '客厅'
+const DEFAULT_ROOM_NAME = '客厅'
+const MAX_PHOTOS = 50
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -44,13 +45,19 @@ export default function UploadPage({
   setStage1Thinking,
   stage2Thinking,
   setStage2Thinking,
+  concurrency,
+  setConcurrency,
 }) {
   const inputRef = useRef(null)
   const [isDragging, setIsDragging] = useState(false)
   const dragCounter = useRef(0)
 
+  const existingRoomNames = [...new Set(photos.map(p => p.roomName).filter(Boolean))]
+
   const addFiles = useCallback(async (files) => {
-    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'))
+    const imageFiles = Array.from(files)
+      .filter(f => f.type.startsWith('image/'))
+      .slice(0, MAX_PHOTOS - photos.length)
     if (!imageFiles.length) return
 
     const newPhotos = await Promise.all(
@@ -58,14 +65,14 @@ export default function UploadPage({
         id: getNextId(),
         file,
         dataUrl: await fileToDataUrl(file),
-        roomType: DEFAULT_ROOM_TYPE,
+        roomName: DEFAULT_ROOM_NAME,
         status: 'waiting',
         result: null,
         error: null,
       }))
     )
     setPhotos(prev => [...prev, ...newPhotos])
-  }, [getNextId, setPhotos])
+  }, [getNextId, setPhotos, photos.length])
 
   const handleDragEnter = (e) => {
     e.preventDefault()
@@ -86,12 +93,11 @@ export default function UploadPage({
   }
 
   const handleRemove = (id) => setPhotos(prev => prev.filter(p => p.id !== id))
-  const handleRoomTypeChange = (id, roomType) =>
-    setPhotos(prev => prev.map(p => p.id === id ? { ...p, roomType } : p))
+  const handleRoomNameChange = (id, roomName) =>
+    setPhotos(prev => prev.map(p => p.id === id ? { ...p, roomName } : p))
 
   const doneCount = photos.filter(p => p.status === 'done').length
   const totalCount = photos.length
-
   const progressPct = analyzing && totalCount > 0
     ? Math.round((doneCount / totalCount) * 100)
     : 0
@@ -142,7 +148,7 @@ export default function UploadPage({
             拍下你的每个房间
           </h1>
           <p className="mt-1.5 text-[15px] text-[#78716C]">
-            AI 帮你找出收纳问题，给出具体的整理方案。建议覆盖每个主要区域，拍摄角度尽量包含整面墙。
+            上传后为每张照片填写房间名称。同名照片将合并为一个房间进行分析。
           </p>
         </div>
 
@@ -171,7 +177,7 @@ export default function UploadPage({
             <p className={`text-sm font-medium ${isDragging ? 'text-brand-600' : 'text-[#78716C]'}`}>
               {isDragging ? '松开即可上传' : '拖拽照片到这里，或点击选择'}
             </p>
-            <p className="mt-1 text-xs text-[#A8A29E]">支持 JPG、PNG、HEIC，最多 20 张</p>
+            <p className="mt-1 text-xs text-[#A8A29E]">支持 JPG、PNG、HEIC，最多 {MAX_PHOTOS} 张</p>
             <input
               ref={inputRef}
               type="file"
@@ -191,8 +197,9 @@ export default function UploadPage({
                 key={photo.id}
                 photo={photo}
                 onRemove={handleRemove}
-                onRoomTypeChange={handleRoomTypeChange}
+                onRoomNameChange={handleRoomNameChange}
                 analyzing={analyzing}
+                existingRoomNames={existingRoomNames}
               />
             ))}
           </div>
@@ -217,7 +224,7 @@ export default function UploadPage({
         {/* Bottom action */}
         {!analyzing && (
           <div className="pt-2 space-y-3">
-            <div className="flex items-center gap-5 px-1">
+            <div className="flex items-center gap-5 px-1 flex-wrap">
               <span className="text-xs text-[#A8A29E] font-medium">模型思考</span>
               <ThinkingToggle
                 label="图片分析（Stage 1）"
@@ -229,10 +236,23 @@ export default function UploadPage({
                 enabled={stage2Thinking}
                 onChange={setStage2Thinking}
               />
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-xs text-[#A8A29E] font-medium">并发度</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={concurrency}
+                  onChange={e => setConcurrency(Math.max(1, Math.min(10, Number(e.target.value))))}
+                  className="w-12 h-6 text-center text-xs font-medium text-[#1C1917] border border-[#DDD9D2] rounded-md bg-white outline-none focus:border-brand-500"
+                />
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <p className="text-sm text-[#A8A29E]">
-                {photos.length > 0 ? `已上传 ${photos.length} 张照片` : '还没有上传照片'}
+                {photos.length > 0
+                  ? `${photos.length} 张照片 · ${[...new Set(photos.map(p => p.roomName))].length} 个房间`
+                  : '还没有上传照片'}
               </p>
               <button
                 onClick={onStartAnalysis}

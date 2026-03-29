@@ -1,5 +1,5 @@
-export function stage1Prompt(roomType) {
-  return `你是一位专业的家居收纳顾问。这是用户家中「${roomType}」的照片。
+export function stage1Prompt(roomName) {
+  return `你是一位专业的家居收纳顾问。这是用户家中「${roomName}」的照片。
 
 请仔细分析照片中的收纳现状，返回以下 JSON 格式（只返回 JSON，不要包含任何其他文字或 markdown 代码块标记）：
 

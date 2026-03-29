@@ -49,7 +49,7 @@ async function callKimi(apiKey, messages, maxTokens = 1500, thinking = true) {
   throw new Error('模型未返回有效内容，请重试')
 }
 
-export async function analyzePhoto(apiKey, imageDataUrl, roomType, thinking = true) {
+export async function analyzePhoto(apiKey, imageDataUrl, roomName, thinking = true) {
   const content = await callKimi(apiKey, [
     {
       role: 'user',
@@ -60,7 +60,7 @@ export async function analyzePhoto(apiKey, imageDataUrl, roomType, thinking = tr
         },
         {
           type: 'text',
-          text: stage1Prompt(roomType),
+          text: stage1Prompt(roomName),
         },
       ],
     },
