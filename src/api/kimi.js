@@ -7,8 +7,8 @@ const MODEL = 'kimi-k2.5'
 function parseJSON(content) {
   // Strip markdown code fences if the model wraps output in them
   const cleaned = content
-    .replace(/^```(?:json)?\s*/m, '')
-    .replace(/\s*```$/m, '')
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
     .trim()
   return JSON.parse(cleaned)
 }
@@ -33,7 +33,19 @@ async function callKimi(apiKey, messages, maxTokens = 1500) {
   }
 
   const data = await response.json()
-  return data.choices[0].message.content
+  const msg = data.choices[0].message
+  // kimi-k2.5 is a reasoning model — content may be empty if all tokens were
+  // consumed by reasoning_content; fall back to extracting JSON from it
+  if (msg.content && msg.content.trim()) {
+    return msg.content
+  }
+  if (msg.reasoning_content) {
+    // extract the last JSON block from the reasoning trace
+    const match = msg.reasoning_content.match(/```json\s*([\s\S]*?)```(?![\s\S]*```json)/i)
+      || msg.reasoning_content.match(/(\{[\s\S]*\})\s*$/)
+    if (match) return match[1]
+  }
+  throw new Error('模型未返回有效内容，请重试')
 }
 
 export async function analyzePhoto(apiKey, imageDataUrl, roomType) {
@@ -51,7 +63,7 @@ export async function analyzePhoto(apiKey, imageDataUrl, roomType) {
         },
       ],
     },
-  ], 1500)
+  ], 4000)
 
   return parseJSON(content)
 }
@@ -62,7 +74,7 @@ export async function synthesizeResults(apiKey, roomResults) {
       role: 'user',
       content: stage2Prompt(roomResults),
     },
-  ], 2500)
+  ], 4000)
 
   return parseJSON(content)
 }
