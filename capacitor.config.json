@@ -1,0 +1,13 @@
+{
+  "appId": "com.tidyhome.app",
+  "appName": "Tidy Home",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
+}
