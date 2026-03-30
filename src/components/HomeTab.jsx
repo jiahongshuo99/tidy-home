@@ -259,7 +259,7 @@ function PhotoCard({ photo, onRemove, onOpenPicker, analyzing }) {
   )
 }
 
-function UploadSection({ mode, photos, setPhotos, analyzing, stage2Status, getNextId, onStartAnalysis, onCancel }) {
+function UploadSection({ mode, photos, setPhotos, analyzing, stage2Status, backgroundInterrupted, getNextId, onStartAnalysis, onCancel }) {
   const inputRef = useRef(null)
   const [isDragging, setIsDragging] = useState(false)
   const [pickerPhotoId, setPickerPhotoId] = useState(null)
@@ -332,6 +332,17 @@ function UploadSection({ mode, photos, setPhotos, analyzing, stage2Status, getNe
               analyzing={analyzing}
             />
           ))}
+        </div>
+      )}
+
+      {/* Background interruption warning */}
+      {analyzing && backgroundInterrupted && (
+        <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-2.5">
+          <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-900">已切至后台，分析可能中断</p>
+            <p className="text-xs text-amber-700 mt-0.5">建议取消后重新分析，或等待查看最终结果</p>
+          </div>
         </div>
       )}
 
@@ -499,6 +510,7 @@ export default function HomeTab({
   setupResult, onConfirmProfile,
   inspectResult,
   stage2Status,
+  backgroundInterrupted,
   getNextId,
   onStartAnalysis,
   onCancelUpload,
@@ -552,6 +564,7 @@ export default function HomeTab({
             setPhotos={setPhotos}
             analyzing={analyzing}
             stage2Status={stage2Status}
+            backgroundInterrupted={backgroundInterrupted}
             getNextId={getNextId}
             onStartAnalysis={onStartAnalysis}
             onCancel={onCancelUpload}

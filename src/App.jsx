@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import BottomTabBar from './components/BottomTabBar'
 import HomeTab from './components/HomeTab'
 import SetupTab from './components/SetupTab'
@@ -50,9 +50,53 @@ export default function App() {
   const [stage1Thinking, setStage1Thinking] = useState(true)
   const [stage2Thinking, setStage2Thinking] = useState(false)
   const [concurrency,    setConcurrency]    = useState(3)
-  const [retryEnabled,   setRetryEnabled]   = useState(() => getRetryEnabled())
+  const [retryEnabled,          setRetryEnabled]          = useState(() => getRetryEnabled())
+  const [backgroundInterrupted, setBackgroundInterrupted] = useState(false)
 
   const handleSetRetryEnabled = (v) => { saveRetryEnabled(v); setRetryEnabled(v) }
+
+  // ── Wake Lock ─────────────────────────────────────────────────────────────
+  const wakeLockRef = useRef(null)
+
+  const acquireWakeLock = async () => {
+    if (!('wakeLock' in navigator)) return
+    try {
+      wakeLockRef.current = await navigator.wakeLock.request('screen')
+    } catch {}
+  }
+
+  const releaseWakeLock = () => {
+    wakeLockRef.current?.release().catch(() => {})
+    wakeLockRef.current = null
+  }
+
+  // ── Background detection (visibilitychange) ───────────────────────────────
+  const homeStateRef     = useRef(homeState)
+  const wasBackgroundRef = useRef(false)
+
+  useEffect(() => { homeStateRef.current = homeState }, [homeState])
+
+  // Clear interrupted flag when analysis finishes
+  useEffect(() => {
+    if (homeState !== 'analyzing') setBackgroundInterrupted(false)
+  }, [homeState])
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (homeStateRef.current === 'analyzing') wasBackgroundRef.current = true
+      } else {
+        if (wasBackgroundRef.current) {
+          if (homeStateRef.current === 'analyzing') setBackgroundInterrupted(true)
+          wasBackgroundRef.current = false
+        }
+        // Re-acquire wake lock if still analyzing (iOS releases it on background)
+        if (homeStateRef.current === 'analyzing') acquireWakeLock()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
 
   const getNextId = () => `photo_${++photoIdCounter}`
 
@@ -81,7 +125,11 @@ export default function App() {
     const currentPhotos = photos
     setHomeState('analyzing')
     setStage2Status('idle')
+    setBackgroundInterrupted(false)
     setPhotos(prev => prev.map(p => ({ ...p, status: 'loading' })))
+    await acquireWakeLock()
+    try {
+    // analysis body wrapped in try/finally to guarantee wake lock release
 
     if (mode === 'setup') {
       const tasks = currentPhotos.map(photo => () =>
@@ -142,6 +190,9 @@ export default function App() {
         setStage2Status('error')
       }
     }
+    } finally {
+      releaseWakeLock()
+    }
   }
 
   const handleConfirmProfile = () => {
@@ -160,6 +211,8 @@ export default function App() {
   }
 
   const cancelUpload = () => {
+    releaseWakeLock()
+    setBackgroundInterrupted(false)
     setPhotos([])
     setStage2Status('idle')
     setHomeState('idle')
@@ -182,6 +235,7 @@ export default function App() {
             onConfirmProfile={handleConfirmProfile}
             inspectResult={inspectResult}
             stage2Status={stage2Status}
+            backgroundInterrupted={backgroundInterrupted}
             getNextId={getNextId}
             onStartAnalysis={handleStartAnalysis}
             onCancelUpload={cancelUpload}
