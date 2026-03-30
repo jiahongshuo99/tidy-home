@@ -65,6 +65,24 @@ function parseJSON(content) {
   }
 }
 
+// Retry wrapper: up to maxRetries extra attempts (4 total when retryEnabled)
+// Delays: 0 s → 1 s → 2 s between attempts
+async function withRetry(fn, retryEnabled) {
+  const maxAttempts = retryEnabled ? 4 : 1
+  let lastErr
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      await new Promise(r => setTimeout(r, attempt * 1000))
+    }
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err
+    }
+  }
+  throw lastErr
+}
+
 async function callKimi(apiKey, messages, maxTokens = 1500, thinking = true) {
   const response = await fetch(`${BASE_URL}/chat/completions`, {
     method: 'POST',
@@ -103,50 +121,58 @@ async function callKimi(apiKey, messages, maxTokens = 1500, thinking = true) {
 
 // ── Setup pipeline ─────────────────────────────────────────────────────────
 
-export async function setupAnalyzePhoto(apiKey, imageDataUrl, roomName, thinking = true) {
-  const content = await callKimi(apiKey, [
-    {
-      role: 'user',
-      content: [
-        { type: 'image_url', image_url: { url: imageDataUrl } },
-        { type: 'text', text: setupStage1Prompt(roomName) },
-      ],
-    },
-  ], 4000, thinking)
-  return parseJSON(content)
+export async function setupAnalyzePhoto(apiKey, imageDataUrl, roomName, thinking = true, retryEnabled = false) {
+  return withRetry(async () => {
+    const content = await callKimi(apiKey, [
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: imageDataUrl } },
+          { type: 'text', text: setupStage1Prompt(roomName) },
+        ],
+      },
+    ], 4000, thinking)
+    return parseJSON(content)
+  }, retryEnabled)
 }
 
-export async function setupSynthesize(apiKey, groupedRooms, thinking = true) {
-  const content = await callKimi(apiKey, [
-    {
-      role: 'user',
-      content: setupStage2Prompt(groupedRooms),
-    },
-  ], 8000, thinking)
-  return parseJSON(content)
+export async function setupSynthesize(apiKey, groupedRooms, thinking = true, retryEnabled = false) {
+  return withRetry(async () => {
+    const content = await callKimi(apiKey, [
+      {
+        role: 'user',
+        content: setupStage2Prompt(groupedRooms),
+      },
+    ], 8000, thinking)
+    return parseJSON(content)
+  }, retryEnabled)
 }
 
 // ── Inspect pipeline ───────────────────────────────────────────────────────
 
-export async function inspectAnalyzePhoto(apiKey, imageDataUrl, roomName, knownZones, thinking = true) {
-  const content = await callKimi(apiKey, [
-    {
-      role: 'user',
-      content: [
-        { type: 'image_url', image_url: { url: imageDataUrl } },
-        { type: 'text', text: inspectStage1Prompt(roomName, knownZones) },
-      ],
-    },
-  ], 4000, thinking)
-  return parseJSON(content)
+export async function inspectAnalyzePhoto(apiKey, imageDataUrl, roomName, knownZones, thinking = true, retryEnabled = false) {
+  return withRetry(async () => {
+    const content = await callKimi(apiKey, [
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: imageDataUrl } },
+          { type: 'text', text: inspectStage1Prompt(roomName, knownZones) },
+        ],
+      },
+    ], 4000, thinking)
+    return parseJSON(content)
+  }, retryEnabled)
 }
 
-export async function inspectSynthesize(apiKey, profile, inspectSnapshots, thinking = true) {
-  const content = await callKimi(apiKey, [
-    {
-      role: 'user',
-      content: inspectStage2Prompt(profile, inspectSnapshots),
-    },
-  ], 8000, thinking)
-  return parseJSON(content)
+export async function inspectSynthesize(apiKey, profile, inspectSnapshots, thinking = true, retryEnabled = false) {
+  return withRetry(async () => {
+    const content = await callKimi(apiKey, [
+      {
+        role: 'user',
+        content: inspectStage2Prompt(profile, inspectSnapshots),
+      },
+    ], 8000, thinking)
+    return parseJSON(content)
+  }, retryEnabled)
 }

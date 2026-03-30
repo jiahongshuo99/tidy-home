@@ -2,6 +2,7 @@ const KEYS = {
   apiKey:         'tidyhome_apikey',
   profile:        'tidyhome_profile',
   inspectHistory: 'tidyhome_inspect_history',
+  retryEnabled:   'tidyhome_retry_enabled',
 }
 
 export function getApiKey()   { return localStorage.getItem(KEYS.apiKey) || '' }
@@ -17,6 +18,9 @@ export function getInspectHistory() {
   const raw = localStorage.getItem(KEYS.inspectHistory)
   return raw ? JSON.parse(raw) : []
 }
+
+export function getRetryEnabled() { return localStorage.getItem(KEYS.retryEnabled) === 'true' }
+export function saveRetryEnabled(v) { localStorage.setItem(KEYS.retryEnabled, v ? 'true' : 'false') }
 
 export function addInspectHistory(result) {
   const history = getInspectHistory()

@@ -26,6 +26,7 @@ export default function SettingsTab({
   stage1Thinking, setStage1Thinking,
   stage2Thinking, setStage2Thinking,
   concurrency, setConcurrency,
+  retryEnabled, setRetryEnabled,
 }) {
   const [draftKey, setDraftKey] = useState(apiKey)
   const [showKey, setShowKey] = useState(false)
@@ -99,6 +100,12 @@ export default function SettingsTab({
         <div>
           <p className="text-xs font-semibold text-[#A8A29E] uppercase tracking-wider mb-3">模型参数</p>
           <div className="bg-white border border-[#DDD9D2] rounded-2xl px-4">
+            <Toggle
+              label="失败自动重试"
+              description="单张分析或综合分析失败时最多重试 3 次（间隔 0/1/2 秒）"
+              enabled={retryEnabled}
+              onChange={setRetryEnabled}
+            />
             <Toggle
               label="建档阶段思考（Stage 1）"
               description="图片分析开启深度思考，更准确但更慢"

@@ -14,6 +14,7 @@ import {
   getApiKey, saveApiKey,
   getProfile, saveProfile,
   getInspectHistory, addInspectHistory,
+  getRetryEnabled, saveRetryEnabled,
 } from './data/storage'
 
 let photoIdCounter = 0
@@ -49,6 +50,9 @@ export default function App() {
   const [stage1Thinking, setStage1Thinking] = useState(true)
   const [stage2Thinking, setStage2Thinking] = useState(false)
   const [concurrency,    setConcurrency]    = useState(3)
+  const [retryEnabled,   setRetryEnabled]   = useState(() => getRetryEnabled())
+
+  const handleSetRetryEnabled = (v) => { saveRetryEnabled(v); setRetryEnabled(v) }
 
   const getNextId = () => `photo_${++photoIdCounter}`
 
@@ -81,7 +85,7 @@ export default function App() {
 
     if (mode === 'setup') {
       const tasks = currentPhotos.map(photo => () =>
-        setupAnalyzePhoto(apiKey, photo.dataUrl, photo.roomName, stage1Thinking)
+        setupAnalyzePhoto(apiKey, photo.dataUrl, photo.roomName, stage1Thinking, retryEnabled)
           .then(result => { updatePhoto(photo.id, { status: 'done', result }); return { roomName: photo.roomName, ...result } })
           .catch(err  => { updatePhoto(photo.id, { status: 'error', error: err.message }); return null })
       )
@@ -97,7 +101,7 @@ export default function App() {
 
       setStage2Status('loading')
       try {
-        const synthesis = await setupSynthesize(apiKey, grouped, stage2Thinking)
+        const synthesis = await setupSynthesize(apiKey, grouped, stage2Thinking, retryEnabled)
         setSetupResult(synthesis)
         setHomeState('setup-done')
         setStage2Status('idle')
@@ -112,7 +116,7 @@ export default function App() {
 
       const tasks = currentPhotos.map(photo => () => {
         const knownZones = profileRoomMap[photo.roomName] ?? []
-        return inspectAnalyzePhoto(apiKey, photo.dataUrl, photo.roomName, knownZones, stage1Thinking)
+        return inspectAnalyzePhoto(apiKey, photo.dataUrl, photo.roomName, knownZones, stage1Thinking, retryEnabled)
           .then(result => { updatePhoto(photo.id, { status: 'done', result }); return { roomName: photo.roomName, ...result } })
           .catch(err  => { updatePhoto(photo.id, { status: 'error', error: err.message }); return null })
       })
@@ -128,7 +132,7 @@ export default function App() {
 
       setStage2Status('loading')
       try {
-        const synthesis = await inspectSynthesize(apiKey, profile, snapshots, stage2Thinking)
+        const synthesis = await inspectSynthesize(apiKey, profile, snapshots, stage2Thinking, retryEnabled)
         const entry = addInspectHistory(synthesis)
         setHistory(prev => [entry, ...prev])
         setInspectResult(synthesis)
@@ -203,6 +207,8 @@ export default function App() {
             setStage2Thinking={setStage2Thinking}
             concurrency={concurrency}
             setConcurrency={setConcurrency}
+            retryEnabled={retryEnabled}
+            setRetryEnabled={handleSetRetryEnabled}
           />
         )}
       </div>
