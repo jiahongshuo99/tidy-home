@@ -16,6 +16,7 @@ import {
   getInspectHistory, addInspectHistory,
   getRetryEnabled, saveRetryEnabled,
 } from './data/storage'
+import { calculateScore } from './utils/scoring'
 
 let photoIdCounter = 0
 
@@ -181,9 +182,13 @@ export default function App() {
       setStage2Status('loading')
       try {
         const synthesis = await inspectSynthesize(apiKey, profile, snapshots, stage2Thinking, retryEnabled)
-        const entry = addInspectHistory(synthesis)
+        const score = calculateScore(synthesis.misplaced_items ?? [])
+        // Compute delta before updating history state
+        const prevScore = history[0]?.score?.overall
+        const delta = prevScore !== undefined ? score.overall - prevScore : null
+        const entry = addInspectHistory(synthesis, score)
         setHistory(prev => [entry, ...prev])
-        setInspectResult(synthesis)
+        setInspectResult({ ...synthesis, score, delta })
         setHomeState('inspect-done')
         setStage2Status('idle')
       } catch {

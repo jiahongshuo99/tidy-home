@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from 'react'
 import { Upload, X, Loader2, CheckCircle2, AlertTriangle, MapPin, ArrowRight, RotateCcw, Sparkles, Camera, ChevronDown } from 'lucide-react'
+import { getGradeConfig } from '../utils/scoring'
 
 const MAX_PHOTOS = 50
 const PRESET_ROOMS = ['客厅', '主卧', '次卧', '厨房', '卫生间', '书房', '餐厅', '阳台', '儿童房', '储物间']
@@ -450,45 +451,114 @@ function SetupDone({ result, onConfirm, onRedo }) {
 
 // ── Inspect results ───────────────────────────────────────────────────────────
 
-function InspectDone({ result, onRedo }) {
-  const items = result?.misplaced_items ?? []
+const SEVERITY_LABEL = { minor: '轻微', moderate: '中度', major: '严重' }
+const SEVERITY_LEFT  = { minor: 'border-l-[#A8A29E]', moderate: 'border-l-amber-400', major: 'border-l-red-500' }
+
+function ScoreCard({ score, delta }) {
+  const cfg = getGradeConfig(score.overall)
+  const { minorCount, moderateCount, majorCount } = score.breakdown
   return (
-    <div className="px-5 py-6">
-      <div className="mb-5">
-        <h2 className="text-[20px] font-bold text-[#1C1917]">巡检报告</h2>
-        <p className="mt-1 text-sm text-[#78716C]">
-          {items.length > 0
-            ? `发现 ${items.length} 件物品放置不合理`
-            : '所有物品均符合收纳档案标准'
-          }
-        </p>
+    <div className={`rounded-2xl border px-4 py-4 mb-5 flex items-center gap-4 ${cfg.card}`}>
+      {/* Score circle */}
+      <div className={`flex-shrink-0 w-[60px] h-[60px] rounded-2xl flex flex-col items-center justify-center ${cfg.circle}`}>
+        <span className={`text-[22px] font-bold leading-none tabular-nums ${cfg.text}`}>{score.overall}</span>
+        <span className={`text-[10px] font-medium mt-0.5 ${cfg.text} opacity-60`}>分</span>
       </div>
 
+      <div className="flex-1 min-w-0">
+        {/* Grade + delta */}
+        <div className="flex items-center gap-2">
+          <span className={`text-base font-bold ${cfg.text}`}>{score.grade}</span>
+          {delta !== null && (
+            <span className={`text-xs font-semibold ${delta > 0 ? 'text-[#4D7C5F]' : delta < 0 ? 'text-red-600' : 'text-[#A8A29E]'}`}>
+              {delta > 0 ? `↑ +${delta}` : delta < 0 ? `↓ ${delta}` : '→ 持平'}
+            </span>
+          )}
+        </div>
+
+        {/* Severity breakdown */}
+        <div className="flex items-center gap-3 mt-1.5">
+          {minorCount > 0 && (
+            <span className="text-xs text-[#78716C]">轻微 ×{minorCount}</span>
+          )}
+          {moderateCount > 0 && (
+            <span className="text-xs text-amber-600 font-medium">中度 ×{moderateCount}</span>
+          )}
+          {majorCount > 0 && (
+            <span className="text-xs text-red-600 font-semibold">严重 ×{majorCount}</span>
+          )}
+          {minorCount === 0 && moderateCount === 0 && majorCount === 0 && (
+            <span className="text-xs text-[#4D7C5F]">全部合规</span>
+          )}
+        </div>
+
+        {/* Room breakdown — only if multiple rooms */}
+        {score.rooms.length > 1 && (
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
+            {score.rooms.map(r => (
+              <span key={r.roomName} className={`text-[11px] ${cfg.text} opacity-80`}>
+                {r.roomName} {r.score}分
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function InspectDone({ result, onRedo }) {
+  const items = result?.misplaced_items ?? []
+  const score = result?.score
+  const delta = result?.delta ?? null
+
+  return (
+    <div className="px-5 py-6">
+      <h2 className="text-[20px] font-bold text-[#1C1917] mb-4">巡检报告</h2>
+
+      {/* Score card — shown when score is available */}
+      {score && <ScoreCard score={score} delta={delta} />}
+
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="w-14 h-14 rounded-full bg-[#F0F7F3] flex items-center justify-center mb-3">
             <CheckCircle2 size={28} className="text-[#4D7C5F]" />
           </div>
           <p className="text-sm font-semibold text-[#1C1917]">家里很整洁</p>
+          <p className="text-xs text-[#A8A29E] mt-1">所有物品均符合收纳档案标准</p>
         </div>
       ) : (
         <div className="space-y-3 mb-6">
-          {items.map((item, i) => (
-            <div key={i} className="bg-white border border-[#DDD9D2] border-l-4 border-l-amber-400 rounded-xl px-4 py-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#1C1917]">{item.item}</p>
-                  <p className="text-xs text-[#78716C] mt-0.5">{item.current_zone}</p>
-                  <p className="text-xs text-[#78716C] mt-1.5 leading-relaxed">{item.reason}</p>
-                  <div className="flex items-start gap-1.5 bg-brand-50 rounded-lg px-3 py-2 mt-2">
-                    <ArrowRight size={11} className="text-brand-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-brand-900 leading-relaxed">{item.suggestion}</p>
+          {items.map((item, i) => {
+            const severity = item.severity ?? 'moderate'
+            return (
+              <div key={i} className={`bg-white border border-[#DDD9D2] border-l-4 ${SEVERITY_LEFT[severity]} rounded-xl px-4 py-4`}>
+                <div className="flex items-start gap-3">
+                  <AlertTriangle size={15} className={`flex-shrink-0 mt-0.5 ${severity === 'major' ? 'text-red-500' : 'text-amber-500'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-[#1C1917]">{item.item}</p>
+                      {item.severity && (
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                          severity === 'major'    ? 'bg-red-50 text-red-600' :
+                          severity === 'moderate' ? 'bg-amber-50 text-amber-600' :
+                                                    'bg-[#F7F5F2] text-[#78716C]'
+                        }`}>
+                          {SEVERITY_LABEL[severity]}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#78716C] mt-0.5">{item.current_zone}</p>
+                    <p className="text-xs text-[#78716C] mt-1.5 leading-relaxed">{item.reason}</p>
+                    <div className="flex items-start gap-1.5 bg-brand-50 rounded-lg px-3 py-2 mt-2">
+                      <ArrowRight size={11} className="text-brand-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-brand-900 leading-relaxed">{item.suggestion}</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

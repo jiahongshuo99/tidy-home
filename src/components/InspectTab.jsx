@@ -1,5 +1,6 @@
 import { Camera, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react'
 import { useState } from 'react'
+import { getGradeConfig } from '../utils/scoring'
 
 function formatDate(iso) {
   const d = new Date(iso)
@@ -7,9 +8,13 @@ function formatDate(iso) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function HistoryCard({ entry }) {
+function HistoryCard({ entry, prevEntry }) {
   const [expanded, setExpanded] = useState(false)
   const items = entry.result?.misplaced_items ?? []
+  const score = entry.score
+  const prevScore = prevEntry?.score?.overall
+  const delta = score && prevScore !== undefined ? score.overall - prevScore : null
+  const cfg = score ? getGradeConfig(score.overall) : null
 
   return (
     <div className="bg-white border border-[#DDD9D2] rounded-2xl overflow-hidden">
@@ -29,6 +34,20 @@ function HistoryCard({ entry }) {
           </p>
           <p className="text-xs text-[#A8A29E] mt-0.5">{formatDate(entry.timestamp)}</p>
         </div>
+        {/* Score badge */}
+        {score && cfg && (
+          <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+            <div className={`px-2 py-0.5 rounded-lg ${cfg.circle}`}>
+              <span className={`text-sm font-bold tabular-nums ${cfg.text}`}>{score.overall}</span>
+              <span className={`text-[10px] font-medium ${cfg.text} opacity-70`}> 分</span>
+            </div>
+            {delta !== null && (
+              <span className={`text-[10px] font-semibold ${delta > 0 ? 'text-[#4D7C5F]' : delta < 0 ? 'text-red-500' : 'text-[#A8A29E]'}`}>
+                {delta > 0 ? `↑+${delta}` : delta < 0 ? `↓${delta}` : '→'}
+              </span>
+            )}
+          </div>
+        )}
         {items.length > 0 && (
           expanded ? <ChevronUp size={16} className="text-[#A8A29E] flex-shrink-0" /> : <ChevronDown size={16} className="text-[#A8A29E] flex-shrink-0" />
         )}
@@ -105,8 +124,8 @@ export default function InspectTab({ profile, history, onStartInspect }) {
           <>
             <p className="text-xs font-medium text-[#A8A29E] mb-3">共 {history.length} 次巡检记录</p>
             <div className="space-y-3">
-              {history.map(entry => (
-                <HistoryCard key={entry.id} entry={entry} />
+              {history.map((entry, i) => (
+                <HistoryCard key={entry.id} entry={entry} prevEntry={history[i + 1]} />
               ))}
             </div>
           </>

@@ -22,12 +22,13 @@ export function getInspectHistory() {
 export function getRetryEnabled() { return localStorage.getItem(KEYS.retryEnabled) === 'true' }
 export function saveRetryEnabled(v) { localStorage.setItem(KEYS.retryEnabled, v ? 'true' : 'false') }
 
-export function addInspectHistory(result) {
+export function addInspectHistory(result, score = null) {
   const history = getInspectHistory()
   const entry = {
     id: Date.now().toString(),
     timestamp: new Date().toISOString(),
     misplacedCount: result?.misplaced_items?.length ?? 0,
+    score,
     result,
   }
   history.unshift(entry) // newest first
