@@ -161,12 +161,7 @@ export default function App() {
     setHomeState('idle')
   }
 
-  // ── Tab change guard: block tab switch while analyzing ───────────────────
-
-  const handleTabChange = (tab) => {
-    if (homeState === 'analyzing') return // ignore taps during analysis
-    setActiveTab(tab)
-  }
+  const handleTabChange = (tab) => setActiveTab(tab)
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -212,7 +207,7 @@ export default function App() {
         )}
       </div>
 
-      <BottomTabBar activeTab={activeTab} onChange={handleTabChange} />
+      <BottomTabBar activeTab={activeTab} onChange={handleTabChange} analyzing={homeState === 'analyzing'} />
     </div>
   )
 }

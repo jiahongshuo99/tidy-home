@@ -7,7 +7,7 @@ const TABS = [
   { key: 'settings',label: '设置',  Icon: Settings },
 ]
 
-export default function BottomTabBar({ activeTab, onChange }) {
+export default function BottomTabBar({ activeTab, onChange, analyzing = false }) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#EEEBE6]"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -20,11 +20,16 @@ export default function BottomTabBar({ activeTab, onChange }) {
               onClick={() => onChange(key)}
               className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors"
             >
-              <Icon
-                size={22}
-                className={active ? 'text-brand-500' : 'text-[#A8A29E]'}
-                strokeWidth={active ? 2 : 1.5}
-              />
+              <div className="relative">
+                <Icon
+                  size={22}
+                  className={active ? 'text-brand-500' : 'text-[#A8A29E]'}
+                  strokeWidth={active ? 2 : 1.5}
+                />
+                {analyzing && key === 'home' && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-500 pulse-dot" />
+                )}
+              </div>
               <span className={`text-[10px] font-medium ${active ? 'text-brand-500' : 'text-[#A8A29E]'}`}>
                 {label}
               </span>
