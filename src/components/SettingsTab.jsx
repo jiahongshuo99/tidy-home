@@ -44,7 +44,10 @@ export default function SettingsTab({
 
   return (
     <div>
-      <header className="bg-white border-b border-[#EEEBE6] sticky top-0 z-40">
+      <header
+        className="bg-white border-b border-[#EEEBE6] sticky top-0 z-40"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="max-w-[600px] mx-auto px-5 h-14 flex items-center">
           <span className="text-sm font-semibold text-[#1C1917]">设置</span>
         </div>

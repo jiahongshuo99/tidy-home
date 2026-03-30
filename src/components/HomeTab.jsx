@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback } from 'react'
-import { Upload, X, Loader2, CheckCircle2, AlertTriangle, MapPin, ArrowRight, RotateCcw, Sparkles, Camera } from 'lucide-react'
+import { Upload, X, Loader2, CheckCircle2, AlertTriangle, MapPin, ArrowRight, RotateCcw, Sparkles, Camera, ChevronDown } from 'lucide-react'
 
 const MAX_PHOTOS = 50
+const PRESET_ROOMS = ['客厅', '主卧', '次卧', '厨房', '卫生间', '书房', '餐厅', '阳台', '儿童房', '储物间']
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -71,7 +72,6 @@ function HomeIdle({ profile, onGoSetup, onGoInspect }) {
         去巡检页开始巡检
       </button>
 
-      {/* Quick profile summary */}
       <div className="mt-6">
         <p className="text-xs font-medium text-[#A8A29E] mb-3">当前档案概览</p>
         <div className="space-y-2">
@@ -88,6 +88,97 @@ function HomeIdle({ profile, onGoSetup, onGoInspect }) {
   )
 }
 
+// ── RoomPicker: bottom sheet modal ───────────────────────────────────────────
+
+function RoomPicker({ currentName, usedNames, onSelect, onClose }) {
+  const [custom, setCustom] = useState('')
+  const [showCustom, setShowCustom] = useState(false)
+  const inputRef = useRef(null)
+
+  const extraNames = usedNames.filter(n => !PRESET_ROOMS.includes(n))
+  const allOptions = [...PRESET_ROOMS, ...extraNames]
+
+  const handleShowCustom = () => {
+    setShowCustom(true)
+    setTimeout(() => inputRef.current?.focus(), 80)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col justify-end">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+
+      {/* Sheet */}
+      <div className="relative bg-white rounded-t-2xl">
+        {/* Handle bar */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-[#DDD9D2] rounded-full" />
+        </div>
+
+        <div
+          className="px-5 pt-3 pb-6"
+          style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+        >
+          <p className="text-sm font-semibold text-[#1C1917] mb-4">选择房间</p>
+
+          {/* Preset chips */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {allOptions.map(name => (
+              <button
+                key={name}
+                onClick={() => onSelect(name)}
+                className={`h-9 px-4 rounded-full text-sm font-medium transition-colors active:scale-95 ${
+                  currentName === name
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-[#F7F5F2] text-[#78716C] active:bg-brand-50 active:text-brand-600'
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom input */}
+          {showCustom ? (
+            <div className="flex gap-2 mb-3">
+              <input
+                ref={inputRef}
+                type="text"
+                value={custom}
+                onChange={e => setCustom(e.target.value)}
+                placeholder="输入房间名称"
+                className="flex-1 h-11 px-3 border border-[#DDD9D2] focus:border-brand-500 rounded-[10px] text-sm outline-none"
+                onKeyDown={e => { if (e.key === 'Enter' && custom.trim()) onSelect(custom.trim()) }}
+              />
+              <button
+                onClick={() => custom.trim() && onSelect(custom.trim())}
+                disabled={!custom.trim()}
+                className="h-11 px-4 bg-brand-500 disabled:opacity-40 text-white text-sm font-semibold rounded-[10px] transition-opacity"
+              >
+                确认
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleShowCustom}
+              className="w-full h-11 mb-3 border border-dashed border-[#DDD9D2] rounded-[10px] text-sm text-[#A8A29E] flex items-center justify-center gap-1.5 active:bg-[#F7F5F2] transition-colors"
+            >
+              + 自定义房间名
+            </button>
+          )}
+
+          <button
+            onClick={onClose}
+            className="w-full h-11 text-sm font-medium text-[#A8A29E]"
+          >
+            取消
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Upload: photo grid + drop zone ────────────────────────────────────────────
 
 const STATUS_BORDER = {
@@ -97,9 +188,8 @@ const STATUS_BORDER = {
   error:   'border-l-4 border-l-red-500 border-[#DDD9D2]',
 }
 
-function PhotoCard({ photo, onRemove, onRoomNameChange, analyzing, existingRoomNames }) {
+function PhotoCard({ photo, onRemove, onOpenPicker, analyzing }) {
   const { id, dataUrl, roomName, status = 'waiting', result, error } = photo
-  const datalistId = `rooms-${id}`
   return (
     <div className={`bg-white rounded-xl border ${STATUS_BORDER[status]} overflow-hidden transition-all duration-150 group`}>
       <div className="relative aspect-[4/3] overflow-hidden bg-[#F7F5F2]">
@@ -134,23 +224,18 @@ function PhotoCard({ photo, onRemove, onRoomNameChange, analyzing, existingRoomN
           </button>
         )}
       </div>
+
       <div className="px-3 py-2.5 space-y-2">
         {!analyzing ? (
-          <>
-            <input
-              type="text"
-              list={datalistId}
-              value={roomName}
-              onChange={e => onRoomNameChange(id, e.target.value)}
-              placeholder="输入房间名称"
-              className="w-full text-xs font-medium text-[#1C1917] bg-transparent outline-none placeholder-[#A8A29E]"
-            />
-            <datalist id={datalistId}>
-              {existingRoomNames.map(name => <option key={name} value={name} />)}
-            </datalist>
-          </>
+          <button
+            onClick={() => onOpenPicker(id)}
+            className="w-full flex items-center justify-between bg-[#F7F5F2] rounded-lg px-2.5 py-2 active:bg-[#EEEBE6] transition-colors"
+          >
+            <span className="text-xs font-medium text-[#1C1917]">{roomName || '选择房间'}</span>
+            <ChevronDown size={12} className="text-[#A8A29E] flex-shrink-0" />
+          </button>
         ) : (
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-2.5 py-2">
             <span className="text-xs font-medium text-[#1C1917]">{roomName}</span>
             {status === 'loading' && <span className="text-xs text-brand-500 font-medium">分析中…</span>}
             {status === 'waiting' && <span className="text-xs text-[#A8A29E]">等待中</span>}
@@ -177,8 +262,11 @@ function PhotoCard({ photo, onRemove, onRoomNameChange, analyzing, existingRoomN
 function UploadSection({ mode, photos, setPhotos, analyzing, stage2Status, getNextId, onStartAnalysis, onCancel }) {
   const inputRef = useRef(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [pickerPhotoId, setPickerPhotoId] = useState(null)
   const dragCounter = useRef(0)
-  const existingRoomNames = [...new Set(photos.map(p => p.roomName).filter(Boolean))]
+
+  const usedNames = [...new Set(photos.map(p => p.roomName).filter(Boolean))]
+  const pickerPhoto = pickerPhotoId ? photos.find(p => p.id === pickerPhotoId) : null
 
   const addFiles = useCallback(async (files) => {
     const imageFiles = Array.from(files)
@@ -206,6 +294,11 @@ function UploadSection({ mode, photos, setPhotos, analyzing, stage2Status, getNe
   const handleRemove    = (id) => setPhotos(prev => prev.filter(p => p.id !== id))
   const handleRoomNameChange = (id, roomName) => setPhotos(prev => prev.map(p => p.id === id ? { ...p, roomName } : p))
 
+  const handlePickerSelect = (name) => {
+    if (pickerPhotoId) handleRoomNameChange(pickerPhotoId, name)
+    setPickerPhotoId(null)
+  }
+
   const doneCount = photos.filter(p => p.status === 'done').length
 
   return (
@@ -220,10 +313,10 @@ function UploadSection({ mode, photos, setPhotos, analyzing, stage2Status, getNe
         >
           <Upload size={20} className={`mb-2 ${isDragging ? 'text-brand-500' : 'text-[#A8A29E]'}`} />
           <p className={`text-sm font-medium ${isDragging ? 'text-brand-600' : 'text-[#78716C]'}`}>
-            {isDragging ? '松开即可上传' : '拖拽照片到这里，或点击选择'}
+            {isDragging ? '松开即可上传' : '拍照或选择图片'}
           </p>
           <p className="mt-1 text-xs text-[#A8A29E]">最多 {MAX_PHOTOS} 张</p>
-          <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => addFiles(e.target.files)} />
+          <input ref={inputRef} type="file" accept="image/*" multiple capture="environment" className="hidden" onChange={e => addFiles(e.target.files)} />
         </div>
       )}
 
@@ -235,9 +328,8 @@ function UploadSection({ mode, photos, setPhotos, analyzing, stage2Status, getNe
               key={photo.id}
               photo={photo}
               onRemove={handleRemove}
-              onRoomNameChange={handleRoomNameChange}
+              onOpenPicker={setPickerPhotoId}
               analyzing={analyzing}
-              existingRoomNames={existingRoomNames}
             />
           ))}
         </div>
@@ -279,6 +371,16 @@ function UploadSection({ mode, photos, setPhotos, analyzing, stage2Status, getNe
         <div className="flex items-center justify-between text-xs text-[#A8A29E]">
           <span>已完成 {doneCount} / {photos.length} 张</span>
         </div>
+      )}
+
+      {/* Room picker bottom sheet */}
+      {pickerPhotoId && pickerPhoto && !analyzing && (
+        <RoomPicker
+          currentName={pickerPhoto.roomName}
+          usedNames={usedNames}
+          onSelect={handlePickerSelect}
+          onClose={() => setPickerPhotoId(null)}
+        />
       )}
     </div>
   )
@@ -416,15 +518,21 @@ export default function HomeTab({
 
   return (
     <div>
-      {/* Progress bar */}
+      {/* Progress bar — below status bar */}
       {analyzing && (
-        <div className="fixed top-0 left-0 right-0 h-[3px] bg-[#EEEBE6] z-50">
+        <div
+          className="fixed left-0 right-0 h-[3px] bg-[#EEEBE6] z-50"
+          style={{ top: 'env(safe-area-inset-top)' }}
+        >
           <div className="h-full bg-brand-500 transition-all duration-500" style={{ width: `${progressPct}%` }} />
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-white border-b border-[#EEEBE6] sticky top-0 z-40">
+      {/* Header — extends into status bar with safe-area padding */}
+      <header
+        className="bg-white border-b border-[#EEEBE6] sticky top-0 z-40"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="max-w-[600px] mx-auto px-5 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="text-sm font-semibold text-[#1C1917]">Tidy Home</span>
