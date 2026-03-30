@@ -316,7 +316,7 @@ function UploadSection({ mode, photos, setPhotos, analyzing, stage2Status, getNe
             {isDragging ? '松开即可上传' : '拍照或选择图片'}
           </p>
           <p className="mt-1 text-xs text-[#A8A29E]">最多 {MAX_PHOTOS} 张</p>
-          <input ref={inputRef} type="file" accept="image/*" multiple capture="environment" className="hidden" onChange={e => addFiles(e.target.files)} />
+          <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => addFiles(e.target.files)} />
         </div>
       )}
 
